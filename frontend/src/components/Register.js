@@ -8,6 +8,7 @@ const Register = () => {
   const [formData, setFormData] = useState({ username: '', password: '', role: 'user' });
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const apiUrl = process.env.REACT_APP_API_URL; // Loads https://user-book-management4.onrender.com
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -16,7 +17,7 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post('http://localhost:5000/api/users/register', formData);
+      const res = await axios.post(`${apiUrl}/api/users/register`, formData); // Updated URL
       toast.success('Registered successfully! Please login.');
       navigate('/login');
     } catch (err) {
@@ -192,26 +193,26 @@ const Register = () => {
   );
 };
 
-// CSS Animations (inline styles don’t support @keyframes, but you can add this to a CSS file or use a library)
+// CSS Animations (inline styles don’t support @keyframes, so move to a CSS file or handle differently)
 const styleSheet = document.styleSheets[0];
 styleSheet.insertRule(`
   @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
   }
-`);
+`, styleSheet.cssRules.length);
 styleSheet.insertRule(`
   @keyframes slideIn {
     from { transform: translateY(20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
   }
-`);
+`, styleSheet.cssRules.length);
 styleSheet.insertRule(`
   @keyframes pulse {
     0% { transform: scale(1); }
     50% { transform: scale(1.05); }
     100% { transform: scale(1); }
   }
-`);
+`, styleSheet.cssRules.length);
 
 export default Register;

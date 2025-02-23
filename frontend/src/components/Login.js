@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 
 const Login = () => {
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const apiUrl = process.env.REACT_APP_API_URL; // Loads https://user-book-management4.onrender.com
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -16,7 +16,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post('http://localhost:5000/api/users/login', formData);
+      const res = await axios.post(`${apiUrl}/api/users/login`, formData); // Updated URL
       localStorage.setItem('token', res.data.token);
       toast.success('Logged in successfully!');
       navigate('/');
@@ -166,26 +166,26 @@ const Login = () => {
   );
 };
 
-// CSS Animations (inline styles don’t support @keyframes, but you can add this to a CSS file or use a library)
+// CSS Animations (inline styles don’t support @keyframes, so move to a CSS file or handle differently)
 const styleSheet = document.styleSheets[0];
 styleSheet.insertRule(`
   @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
   }
-`);
+`, styleSheet.cssRules.length);
 styleSheet.insertRule(`
   @keyframes slideIn {
     from { transform: translateY(20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
   }
-`);
+`, styleSheet.cssRules.length);
 styleSheet.insertRule(`
   @keyframes pulse {
     0% { transform: scale(1); }
     50% { transform: scale(1.05); }
     100% { transform: scale(1); }
   }
-`);
+`, styleSheet.cssRules.length);
 
 export default Login;

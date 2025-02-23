@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Link, useNavigate } from 'react-router-dom'; // Added useNavigate for logout
+import { Link, useNavigate } from 'react-router-dom';
 import Modal from 'react-modal';
 import { toast } from 'react-toastify';
 import { saveAs } from 'file-saver';
@@ -14,19 +14,20 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [newBook, setNewBook] = useState({ title: '', author: '', isbn: '', description: '' });
-  const [editBook, setEditBook] = useState(null); // State for the book being edited
-  const [editForm, setEditForm] = useState({ title: '', author: '', isbn: '', description: '' }); // State for edit form
-  const [searchTerm, setSearchTerm] = useState(''); // State for search input
+  const [editBook, setEditBook] = useState(null);
+  const [editForm, setEditForm] = useState({ title: '', author: '', isbn: '', description: '' });
+  const [searchTerm, setSearchTerm] = useState('');
   const token = localStorage.getItem('token');
-  const navigate = useNavigate(); // For logout redirection
+  const navigate = useNavigate();
+  const apiUrl = process.env.REACT_APP_API_URL; // Loads https://user-book-management4.onrender.com
 
   useEffect(() => {
     fetchBooks();
-  }, []); // Initial fetch
+  }, []);
 
   const fetchBooks = () => {
     setLoading(true);
-    axios.get('http://localhost:5000/api/books')
+    axios.get(`${apiUrl}/api/books`)
       .then(res => {
         setBooks(res.data);
         setLoading(false);
@@ -41,7 +42,6 @@ const Home = () => {
   if (loading) return <div style={{ textAlign: 'center', padding: '20px', color: '#fff', background: 'linear-gradient(45deg, #4a90e2, #50c878)' }}>Loading books...</div>;
   if (error) return <div style={{ color: 'red', textAlign: 'center', padding: '20px', background: '#ffebee' }}>Error: {error}</div>;
 
-  // Filter books based on search term (title, author, or ISBN)
   const filteredBooks = books.filter(book =>
     book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     book.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -53,11 +53,14 @@ const Home = () => {
       alert('Please log in to add books to favorites');
       return;
     }
-    axios.post(`http://localhost:5000/api/users/favorites/${bookId}`, {}, {
+    axios.post(`${apiUrl}/api/users/favorites/${bookId}`, {}, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => toast.success(res.data.message))
-      .catch(err => console.log('Add to favorites error:', err.response ? err.response.data : err.message));
+      .catch(err => {
+        console.log('Add to favorites error:', err.response ? err.response.data : err.message);
+        toast.error(err.response?.data?.message || 'Failed to add to favorites');
+      });
   };
 
   const getUserId = () => {
@@ -91,11 +94,11 @@ const Home = () => {
       return;
     }
     const headers = { Authorization: `Bearer ${token}` };
-    axios.post('http://localhost:5000/api/books', newBook, { headers })
+    axios.post(`${apiUrl}/api/books`, newBook, { headers })
       .then(res => {
         setBooks([...books, res.data]);
         setNewBook({ title: '', author: '', isbn: '', description: '' });
-        setError(null); // Clear any previous error
+        setError(null);
         toast.success('Book added successfully!');
       })
       .catch(err => {
@@ -110,19 +113,18 @@ const Home = () => {
       alert('Please log in to delete books');
       return;
     }
-    // Check if the book was created by this user
-    axios.get(`http://localhost:5000/api/books/${id}`)
+    axios.get(`${apiUrl}/api/books/${id}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(bookRes => {
         if (bookRes.data.createdBy.toString() !== userId) {
           toast.error('You can only delete your own books');
           return;
         }
         const headers = { Authorization: `Bearer ${token}` };
-        axios.delete(`http://localhost:5000/api/books/${id}`, { headers })
+        axios.delete(`${apiUrl}/api/books/${id}`, { headers })
           .then(response => {
-            console.log('Delete response:', response.data); // Debug log
+            console.log('Delete response:', response.data);
             setBooks(books.filter(book => book._id !== id));
-            setError(null); // Clear any previous error
+            setError(null);
             toast.success('Book deleted successfully!');
           })
           .catch(err => {
@@ -164,7 +166,7 @@ const Home = () => {
       return;
     }
     const headers = { Authorization: `Bearer ${token}` };
-    axios.put(`http://localhost:5000/api/books/${editBook._id}`, editForm, { headers })
+    axios.put(`${apiUrl}/api/books/${editBook._id}`, editForm, { headers })
       .then(res => {
         setBooks(books.map(b => (b._id === editBook._id ? res.data : b)));
         handleEditClose();
@@ -178,18 +180,17 @@ const Home = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token'); // Clear the token from localStorage
-    navigate('/login'); // Redirect to the login page
+    localStorage.removeItem('token');
+    navigate('/login');
   };
 
-  // Function to download books as Excel
   const downloadBooks = () => {
     if (!token) {
       alert('Please log in to download books');
       return;
     }
     const headers = { Authorization: `Bearer ${token}` };
-    axios.get('http://localhost:5000/api/books/export', { headers })
+    axios.get(`${apiUrl}/api/books/export`, { headers })
       .then(response => {
         const ws = XLSX.utils.json_to_sheet(response.data);
         const wb = XLSX.utils.book_new();
@@ -283,7 +284,6 @@ const Home = () => {
         </p>
       )}
 
-      {/* Search Input and Button */}
       {token && (
         <div style={{
           margin: '20px 0',
@@ -313,7 +313,7 @@ const Home = () => {
             onBlur={e => e.currentTarget.style.borderColor = '#3498db'}
           />
           <button
-            onClick={() => setSearchTerm('')} // Clear search
+            onClick={() => setSearchTerm('')}
             style={{
               padding: '8px 16px',
               background: 'linear-gradient(45deg, #e74c3c, #c0392b)',
@@ -341,7 +341,6 @@ const Home = () => {
         </div>
       )}
 
-      {/* Download Button */}
       {token && (
         <div style={{ textAlign: 'center', margin: '20px 0' }}>
           <button
@@ -373,7 +372,6 @@ const Home = () => {
         </div>
       )}
 
-      {/* Add New Book Form (Users and Admins) */}
       {token && (
         <div style={{
           margin: '20px 0',
@@ -693,7 +691,6 @@ const Home = () => {
         </table>
       )}
 
-      {/* Edit Book Modal */}
       <Modal
         isOpen={!!editBook}
         onRequestClose={handleEditClose}
@@ -883,25 +880,25 @@ styleSheet.insertRule(`
     from { opacity: 0; }
     to { opacity: 1; }
   }
-`);
+`, styleSheet.cssRules.length);
 styleSheet.insertRule(`
   @keyframes slideIn {
     from { transform: translateY(20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
   }
-`);
+`, styleSheet.cssRules.length);
 styleSheet.insertRule(`
   @keyframes modalSlide {
     from { transform: translate(-50%, -60%); opacity: 0; }
     to { transform: translate(-50%, -50%); opacity: 1; }
   }
-`);
+`, styleSheet.cssRules.length);
 styleSheet.insertRule(`
   @keyframes pulse {
     0% { transform: scale(1); }
     50% { transform: scale(1.05); }
     100% { transform: scale(1); }
   }
-`);
+`, styleSheet.cssRules.length);
 
 export default Home;
