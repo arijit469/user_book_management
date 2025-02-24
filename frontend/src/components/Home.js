@@ -374,7 +374,7 @@ const Home = () => {
           </button>
         </div>
       )}
-
+{/* 
       {token && (
         <div style={{ textAlign: 'center', margin: '20px 0' }}>
           <button
@@ -404,7 +404,7 @@ const Home = () => {
             Download Your Books
           </button>
         </div>
-      )}
+      )} */}
 
       {token && (
         <div style={{
