@@ -8,12 +8,20 @@ const app = express();
 // Middleware
 // const cors = require('cors');
 
+// app.use(cors({
+//   origin: ['https://user-book-management11-82w5.vercel.app'], // Allow your frontend
+//   methods: 'GET,POST,PUT,DELETE',
+//   credentials: true
+// }));
 app.use(cors({
-  origin: ['https://user-book-management11-82w5.vercel.app'], // Allow your frontend
-  methods: 'GET,POST,PUT,DELETE',
+  origin: ['https://user-book-management11-82w5.vercel.app'],  // Allow frontend
+  methods: 'GET, POST, PUT, DELETE, OPTIONS', // Allow required HTTP methods
+  allowedHeaders: ['Content-Type', 'Authorization'], // Allow necessary headers
   credentials: true
 }));
 
+// Handle preflight requests manually (if needed)
+app.options('*', cors());
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URI)
