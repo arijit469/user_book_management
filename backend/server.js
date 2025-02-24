@@ -8,7 +8,7 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cors({
-  origin: 'https://user-book-management4.onrender.com',
+  origin:'https://user-book-management4.onrender.com',
 }));
 
 // MongoDB Connection
