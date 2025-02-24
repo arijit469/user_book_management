@@ -5,6 +5,7 @@ import Modal from 'react-modal';
 import { toast } from 'react-toastify';
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
+import ReactPaginate from 'react-paginate'; // Add this package via `npm install react-paginate`
 import 'react-toastify/dist/ReactToastify.css';
 
 Modal.setAppElement('#root');
@@ -17,20 +18,36 @@ const Home = () => {
   const [editBook, setEditBook] = useState(null);
   const [editForm, setEditForm] = useState({ title: '', author: '', isbn: '', description: '' });
   const [searchTerm, setSearchTerm] = useState('');
+  const [pageNumber, setPageNumber] = useState(0);
+  const booksPerPage = 5; // Number of books per page for pagination
   const token = localStorage.getItem('token');
   const navigate = useNavigate();
   const apiUrl = process.env.REACT_APP_API_URL;
 
-  const fetchBooks = useCallback(() => {
+  const fetchUserBooks = useCallback(() => {
+    if (!token) {
+      setBooks([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    axios.get(`${apiUrl}/api/books`)
+    const userId = getUserId();
+    axios.get(`${apiUrl}/api/books/user/${userId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
       .then(res => { setBooks(res.data); setLoading(false); })
-      .catch(err => { setError(err.message); setLoading(false); console.log('Fetch books error:', err.response ? err.response.data : err.message); });
-  }, [apiUrl]);
-  
+      .catch(err => { 
+        setError(err.message); 
+        setLoading(false); 
+        console.log('Fetch user books error:', err.response ? err.response.data : err.message); 
+      });
+  }, [apiUrl, token]);
+
   useEffect(() => {
-    fetchBooks();
-  }, [fetchBooks]);
+    fetchUserBooks();
+  }, [fetchUserBooks]);
+
   if (loading) return <div style={{ textAlign: 'center', padding: '20px', color: '#fff', background: 'linear-gradient(45deg, #4a90e2, #50c878)' }}>Loading books...</div>;
   if (error) return <div style={{ color: 'red', textAlign: 'center', padding: '20px', background: '#ffebee' }}>Error: {error}</div>;
 
@@ -39,6 +56,13 @@ const Home = () => {
     book.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
     book.isbn.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const pageCount = Math.ceil(filteredBooks.length / booksPerPage);
+  const displayedBooks = filteredBooks.slice(pageNumber * booksPerPage, (pageNumber + 1) * booksPerPage);
+
+  const handlePageClick = ({ selected }) => {
+    setPageNumber(selected);
+  };
 
   const addToFavorites = (bookId) => {
     if (!token) {
@@ -86,7 +110,7 @@ const Home = () => {
       return;
     }
     const headers = { Authorization: `Bearer ${token}` };
-    axios.post(`${apiUrl}/api/books`, newBook, { headers })
+    axios.post(`${apiUrl}/api/books`, { ...newBook, createdBy: userId }, { headers })
       .then(res => {
         setBooks([...books, res.data]);
         setNewBook({ title: '', author: '', isbn: '', description: '' });
@@ -133,6 +157,10 @@ const Home = () => {
   };
 
   const handleEditOpen = (book) => {
+    if (book.createdBy.toString() !== userId) {
+      toast.error('You can only edit your own books');
+      return;
+    }
     setEditBook(book);
     setEditForm({
       title: book.title,
@@ -181,16 +209,17 @@ const Home = () => {
       alert('Please log in to download books');
       return;
     }
+    const userId = getUserId();
     const headers = { Authorization: `Bearer ${token}` };
-    axios.get(`${apiUrl}/api/books/export`, { headers })
+    axios.get(`${apiUrl}/api/books/user/${userId}/export`, { headers })
       .then(response => {
         const ws = XLSX.utils.json_to_sheet(response.data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Books');
         const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
         const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        saveAs(blob, 'books.xlsx');
-        toast.success('Books downloaded successfully!');
+        saveAs(blob, 'user_books.xlsx');
+        toast.success('Your books downloaded successfully!');
       })
       .catch(err => {
         setError(err.response?.data?.message || err.message);
@@ -207,7 +236,7 @@ const Home = () => {
       background: 'linear-gradient(135deg, #f5f7fa, #c3cfe2)',
       borderRadius: '15px',
       boxShadow: '0 10px 20px rgba(0, 0, 0, 0.1)',
-      fontFamily: '"Poppins", sans-serif',
+      fontFamily: '"Roboto", sans-serif', // Changed to Roboto for a stylish font
     }}>
       <h1 style={{
         textAlign: 'center',
@@ -216,6 +245,7 @@ const Home = () => {
         marginBottom: '20px',
         textShadow: '2px 2px 4px rgba(0, 0, 0, 0.1)',
         animation: 'fadeIn 1s ease-in',
+        fontWeight: '700',
       }}>
         Book Management System
       </h1>
@@ -359,7 +389,7 @@ const Home = () => {
               e.currentTarget.style.boxShadow = '0 4px 12px rgba(52, 152, 219, 0.3)';
             }}
           >
-            Download All Books
+            Download Your Books
           </button>
         </div>
       )}
@@ -485,202 +515,263 @@ const Home = () => {
         </div>
       )}
 
-      <h2 style={{
-        marginTop: '30px',
-        color: '#2c3e50',
-        fontSize: '2rem',
-        textAlign: 'center',
-        textShadow: '2px 2px 4px rgba(0, 0, 0, 0.1)',
-        animation: 'fadeIn 1s ease-in',
-      }}>
-        Books
-      </h2>
-      {filteredBooks.length === 0 ? (
-        <p style={{
-          textAlign: 'center',
-          margin: '20px 0',
-          color: '#7f8c8d',
-          fontSize: '1rem',
-          background: 'rgba(255, 255, 255, 0.9)',
-          padding: '15px',
-          borderRadius: '10px',
-          boxShadow: '0 5px 15px rgba(0, 0, 0, 0.1)',
-        }}>
-          {searchTerm ? 'No books found matching your search.' : 'No books available. Please add books above.'}
-        </p>
-      ) : (
-        <table style={{
-          width: '100%',
-          borderCollapse: 'collapse',
-          marginTop: '20px',
-          background: 'rgba(255, 255, 255, 0.9)',
-          borderRadius: '10px',
-          boxShadow: '0 8px 20px rgba(0, 0, 0, 0.1)',
-          animation: 'slideIn 1s ease-out',
-        }}>
-          <thead>
-            <tr style={{
-              background: 'linear-gradient(45deg, #3498db, #2980b9)',
-              borderBottom: '2px solid #2980b9',
+      {token && (
+        <>
+          <h2 style={{
+            marginTop: '30px',
+            color: '#2c3e50',
+            fontSize: '2rem',
+            textAlign: 'center',
+            textShadow: '2px 2px 4px rgba(0, 0, 0, 0.1)',
+            animation: 'fadeIn 1s ease-in',
+          }}>
+            Your Books
+          </h2>
+          {displayedBooks.length === 0 ? (
+            <p style={{
+              textAlign: 'center',
+              margin: '20px 0',
+              color: '#7f8c8d',
+              fontSize: '1rem',
+              background: 'rgba(255, 255, 255, 0.9)',
+              padding: '15px',
+              borderRadius: '10px',
+              boxShadow: '0 5px 15px rgba(0, 0, 0, 0.1)',
             }}>
-              <th style={{
-                padding: '12px',
-                textAlign: 'left',
-                color: 'white',
-                fontWeight: '600',
-                textShadow: '1px 1px 2px rgba(0, 0, 0, 0.1)',
-              }}>Title</th>
-              <th style={{
-                padding: '12px',
-                textAlign: 'left',
-                color: 'white',
-                fontWeight: '600',
-                textShadow: '1px 1px 2px rgba(0, 0, 0, 0.1)',
-              }}>Author</th>
-              <th style={{
-                padding: '12px',
-                textAlign: 'left',
-                color: 'white',
-                fontWeight: '600',
-                textShadow: '1px 1px 2px rgba(0, 0, 0, 0.1)',
-              }}>ISBN</th>
-              <th style={{
-                padding: '12px',
-                textAlign: 'left',
-                color: 'white',
-                fontWeight: '600',
-                textShadow: '1px 1px 2px rgba(0, 0, 0, 0.1)',
-              }}>Description</th>
-              <th style={{
-                padding: '12px',
-                textAlign: 'left',
-                color: 'white',
-                fontWeight: '600',
-                textShadow: '1px 1px 2px rgba(0, 0, 0, 0.1)',
-              }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredBooks.map(book => (
-              <tr
-                key={book._id}
+              {searchTerm ? 'No books found matching your search.' : 'You have no books yet. Add one above!'}
+            </p>
+          ) : (
+            <>
+              <table style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                marginTop: '20px',
+                background: 'rgba(255, 255, 255, 0.9)',
+                borderRadius: '10px',
+                boxShadow: '0 8px 20px rgba(0, 0, 0, 0.1)',
+                animation: 'slideIn 1s ease-out',
+              }}>
+                <thead>
+                  <tr style={{
+                    background: 'linear-gradient(45deg, #3498db, #2980b9)',
+                    borderBottom: '2px solid #2980b9',
+                  }}>
+                    <th style={{
+                      padding: '12px',
+                      textAlign: 'left',
+                      color: 'white',
+                      fontWeight: '600',
+                      textShadow: '1px 1px 2px rgba(0, 0, 0, 0.1)',
+                    }}>Title</th>
+                    <th style={{
+                      padding: '12px',
+                      textAlign: 'left',
+                      color: 'white',
+                      fontWeight: '600',
+                      textShadow: '1px 1px 2px rgba(0, 0, 0, 0.1)',
+                    }}>Author</th>
+                    <th style={{
+                      padding: '12px',
+                      textAlign: 'left',
+                      color: 'white',
+                      fontWeight: '600',
+                      textShadow: '1px 1px 2px rgba(0, 0, 0, 0.1)',
+                    }}>ISBN</th>
+                    <th style={{
+                      padding: '12px',
+                      textAlign: 'left',
+                      color: 'white',
+                      fontWeight: '600',
+                      textShadow: '1px 1px 2px rgba(0, 0, 0, 0.1)',
+                    }}>Description</th>
+                    <th style={{
+                      padding: '12px',
+                      textAlign: 'left',
+                      color: 'white',
+                      fontWeight: '600',
+                      textShadow: '1px 1px 2px rgba(0, 0, 0, 0.1)',
+                    }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayedBooks.map(book => (
+                    <tr
+                      key={book._id}
+                      style={{
+                        borderBottom: '1px solid #ddd',
+                        transition: 'background-color 0.3s ease',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                      onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <td style={{ padding: '12px', color: '#2c3e50' }}>{book.title}</td>
+                      <td style={{ padding: '12px', color: '#2c3e50' }}>{book.author}</td>
+                      <td style={{ padding: '12px', color: '#2c3e50' }}>{book.isbn}</td>
+                      <td style={{ padding: '12px', color: '#2c3e50' }}>{book.description}</td>
+                      <td style={{ padding: '12px' }}>
+                        {token && (
+                          <>
+                            <button
+                              onClick={() => addToFavorites(book._id)}
+                              style={{
+                                margin: '5px 5px 5px 0',
+                                padding: '8px 12px',
+                                background: 'linear-gradient(45deg, #27ae60, #2ecc71)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontSize: '14px',
+                                boxShadow: '0 4px 12px rgba(39, 174, 96, 0.3)',
+                                transition: 'all 0.3s ease',
+                              }}
+                              onMouseEnter={e => {
+                                e.currentTarget.style.background = 'linear-gradient(45deg, #2ecc71, #27ae60)';
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = '0 6px 15px rgba(39, 174, 96, 0.4)';
+                              }}
+                              onMouseLeave={e => {
+                                e.currentTarget.style.background = 'linear-gradient(45deg, #27ae60, #2ecc71)';
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(39, 174, 96, 0.3)';
+                              }}
+                            >
+                              Favorites
+                            </button>
+                            {book.createdBy.toString() === userId && (
+                              <>
+                                <button
+                                  onClick={() => handleEditOpen(book)}
+                                  style={{
+                                    margin: '5px 5px 5px 0',
+                                    padding: '8px 12px',
+                                    background: 'linear-gradient(45deg, #f1c40f, #f39c12)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    boxShadow: '0 4px 12px rgba(241, 196, 15, 0.3)',
+                                    transition: 'all 0.3s ease',
+                                  }}
+                                  onMouseEnter={e => {
+                                    e.currentTarget.style.background = 'linear-gradient(45deg, #f39c12, #f1c40f)';
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 6px 15px rgba(241, 196, 15, 0.4)';
+                                  }}
+                                  onMouseLeave={e => {
+                                    e.currentTarget.style.background = 'linear-gradient(45deg, #f1c40f, #f39c12)';
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(241, 196, 15, 0.3)';
+                                  }}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => deleteBook(book._id)}
+                                  style={{
+                                    margin: '5px 5px 5px 0',
+                                    padding: '8px 12px',
+                                    background: 'linear-gradient(45deg, #e74c3c, #c0392b)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    boxShadow: '0 4px 12px rgba(231, 76, 60, 0.3)',
+                                    transition: 'all 0.3s ease',
+                                  }}
+                                  onMouseEnter={e => {
+                                    e.currentTarget.style.background = 'linear-gradient(45deg, #c0392b, #e74c3c)';
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 6px 15px rgba(231, 76, 60, 0.4)';
+                                  }}
+                                  onMouseLeave={e => {
+                                    e.currentTarget.style.background = 'linear-gradient(45deg, #e74c3c, #c0392b)';
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(231, 76, 60, 0.3)';
+                                  }}
+                                >
+                                  Delete
+                                </button>
+                              </>
+                            )}
+                            {book.createdBy.toString() !== userId && (
+                              <p style={{
+                                color: '#e74c3c',
+                                margin: '5px 0',
+                                fontSize: '0.9rem',
+                                fontWeight: '500',
+                                textShadow: '1px 1px 2px rgba(0, 0, 0, 0.1)',
+                              }}>
+                                You can only edit or delete your own books.
+                              </p>
+                            )}
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <ReactPaginate
+                previousLabel={'Previous'}
+                nextLabel={'Next'}
+                breakLabel={'...'}
+                pageCount={pageCount}
+                marginPagesDisplayed={2}
+                pageRangeDisplayed={3}
+                onPageChange={handlePageClick}
+                containerClassName={'pagination'}
+                activeClassName={'active'}
                 style={{
-                  borderBottom: '1px solid #ddd',
-                  transition: 'background-color 0.3s ease',
+                  marginTop: '20px',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: '10px',
+                  listStyle: 'none',
+                  padding: '0',
                 }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                <td style={{ padding: '12px', color: '#2c3e50' }}>{book.title}</td>
-                <td style={{ padding: '12px', color: '#2c3e50' }}>{book.author}</td>
-                <td style={{ padding: '12px', color: '#2c3e50' }}>{book.isbn}</td>
-                <td style={{ padding: '12px', color: '#2c3e50' }}>{book.description}</td>
-                <td style={{ padding: '12px' }}>
-                  {token && (
-                    <>
-                      <button
-                        onClick={() => addToFavorites(book._id)}
-                        style={{
-                          margin: '5px 5px 5px 0',
-                          padding: '8px 12px',
-                          background: 'linear-gradient(45deg, #27ae60, #2ecc71)',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          boxShadow: '0 4px 12px rgba(39, 174, 96, 0.3)',
-                          transition: 'all 0.3s ease',
-                        }}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.background = 'linear-gradient(45deg, #2ecc71, #27ae60)';
-                          e.currentTarget.style.transform = 'translateY(-2px)';
-                          e.currentTarget.style.boxShadow = '0 6px 15px rgba(39, 174, 96, 0.4)';
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.background = 'linear-gradient(45deg, #27ae60, #2ecc71)';
-                          e.currentTarget.style.transform = 'translateY(0)';
-                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(39, 174, 96, 0.3)';
-                        }}
-                      >
-                        Favorites
-                      </button>
-                      {book.createdBy.toString() === userId && (
-                        <>
-                          <button
-                            onClick={() => handleEditOpen(book)}
-                            style={{
-                              margin: '5px 5px 5px 0',
-                              padding: '8px 12px',
-                              background: 'linear-gradient(45deg, #f1c40f, #f39c12)',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '8px',
-                              cursor: 'pointer',
-                              fontSize: '14px',
-                              boxShadow: '0 4px 12px rgba(241, 196, 15, 0.3)',
-                              transition: 'all 0.3s ease',
-                            }}
-                            onMouseEnter={e => {
-                              e.currentTarget.style.background = 'linear-gradient(45deg, #f39c12, #f1c40f)';
-                              e.currentTarget.style.transform = 'translateY(-2px)';
-                              e.currentTarget.style.boxShadow = '0 6px 15px rgba(241, 196, 15, 0.4)';
-                            }}
-                            onMouseLeave={e => {
-                              e.currentTarget.style.background = 'linear-gradient(45deg, #f1c40f, #f39c12)';
-                              e.currentTarget.style.transform = 'translateY(0)';
-                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(241, 196, 15, 0.3)';
-                            }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => deleteBook(book._id)}
-                            style={{
-                              margin: '5px 5px 5px 0',
-                              padding: '8px 12px',
-                              background: 'linear-gradient(45deg, #e74c3c, #c0392b)',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '8px',
-                              cursor: 'pointer',
-                              fontSize: '14px',
-                              boxShadow: '0 4px 12px rgba(231, 76, 60, 0.3)',
-                              transition: 'all 0.3s ease',
-                            }}
-                            onMouseEnter={e => {
-                              e.currentTarget.style.background = 'linear-gradient(45deg, #c0392b, #e74c3c)';
-                              e.currentTarget.style.transform = 'translateY(-2px)';
-                              e.currentTarget.style.boxShadow = '0 6px 15px rgba(231, 76, 60, 0.4)';
-                            }}
-                            onMouseLeave={e => {
-                              e.currentTarget.style.background = 'linear-gradient(45deg, #e74c3c, #c0392b)';
-                              e.currentTarget.style.transform = 'translateY(0)';
-                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(231, 76, 60, 0.3)';
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </>
-                      )}
-                      {book.createdBy.toString() !== userId && (
-                        <p style={{
-                          color: '#e74c3c',
-                          margin: '5px 0',
-                          fontSize: '0.9rem',
-                          fontWeight: '500',
-                          textShadow: '1px 1px 2px rgba(0, 0, 0, 0.1)',
-                        }}>
-                          You can only edit or delete your own books.
-                        </p>
-                      )}
-                    </>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                pageLinkStyle={{
+                  padding: '8px 12px',
+                  border: '1px solid #3498db',
+                  borderRadius: '8px',
+                  background: '#fff',
+                  color: '#3498db',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.3s ease, color 0.3s ease',
+                }}
+                activeLinkStyle={{
+                  background: 'linear-gradient(45deg, #3498db, #2980b9)',
+                  color: 'white',
+                  borderColor: '#2980b9',
+                }}
+                previousLinkStyle={{
+                  padding: '8px 12px',
+                  border: '1px solid #3498db',
+                  borderRadius: '8px',
+                  background: '#fff',
+                  color: '#3498db',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.3s ease, color 0.3s ease',
+                }}
+                nextLinkStyle={{
+                  padding: '8px 12px',
+                  border: '1px solid #3498db',
+                  borderRadius: '8px',
+                  background: '#fff',
+                  color: '#3498db',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.3s ease, color 0.3s ease',
+                }}
+                disabledLinkStyle={{
+                  opacity: '0.6',
+                  cursor: 'not-allowed',
+                }}
+              />
+            </>
+          )}
+        </>
       )}
 
       <Modal
@@ -865,7 +956,45 @@ const Home = () => {
   );
 };
 
+// Add CSS for pagination
 const styleSheet = document.styleSheets[0];
+styleSheet.insertRule(`
+  .pagination {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    list-style: none;
+    padding: 0;
+    margin: 20px 0;
+  }
+`, styleSheet.cssRules.length);
+styleSheet.insertRule(`
+  .pagination li a {
+    padding: 8px 12px;
+    border: 1px solid #3498db;
+    border-radius: 8px;
+    background: #fff;
+    color: #3498db;
+    cursor: pointer;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    text-decoration: none;
+  }
+`, styleSheet.cssRules.length);
+styleSheet.insertRule(`
+  .pagination li.active a {
+    background: linear-gradient(45deg, #3498db, #2980b9);
+    color: white;
+    border-color: #2980b9;
+  }
+`, styleSheet.cssRules.length);
+styleSheet.insertRule(`
+  .pagination li.disabled a {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`, styleSheet.cssRules.length);
+
+// Keep existing animations
 styleSheet.insertRule(`
   @keyframes fadeIn {
     from { opacity: 0; }
