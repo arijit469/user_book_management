@@ -6,9 +6,9 @@ const cors = require('cors');
 const app = express();
 
 // Middleware
-const cors = require('cors');
+app.use(express.json());
 app.use(cors({
-  origin: 'https://user-book-management11-82w5-arijitmalik267-gmailcoms-projects.vercel.app'
+  origin:'https://user-book-management4.onrender.com',
 }));
 
 // MongoDB Connection
