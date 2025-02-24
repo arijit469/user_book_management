@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import Modal from 'react-modal';
@@ -7,7 +7,7 @@ import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
 import 'react-toastify/dist/ReactToastify.css';
 
-Modal.setAppElement('#root'); // Set the root element for accessibility
+Modal.setAppElement('#root');
 
 const AdminDashboard = () => {
   const [books, setBooks] = useState([]);
@@ -19,13 +19,9 @@ const AdminDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const token = localStorage.getItem('token');
   const navigate = useNavigate();
-  const apiUrl = process.env.REACT_APP_API_URL; // Loads https://user-book-management4.onrender.com
+  const apiUrl = process.env.REACT_APP_API_URL;
 
-  useEffect(() => {
-    fetchBooks();
-  }, []);
-
-  const fetchBooks = () => {
+  const fetchBooks = useCallback(() => {
     setLoading(true);
     axios.get(`${apiUrl}/api/books`)
       .then(res => {
@@ -37,7 +33,11 @@ const AdminDashboard = () => {
         setLoading(false);
         console.log('Fetch books error:', err.response ? err.response.data : err.message);
       });
-  };
+  }, [apiUrl]);
+
+  useEffect(() => {
+    fetchBooks();
+  }, [fetchBooks]);
 
   if (loading) return <div style={{ textAlign: 'center', padding: '20px' }}>Loading books...</div>;
   if (error) return <div style={{ color: 'red', textAlign: 'center', padding: '20px' }}>Error: {error}</div>;
