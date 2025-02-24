@@ -6,7 +6,7 @@ const cors = require('cors');
 const app = express();
 
 // Middleware
-const cors = require('cors');
+// const cors = require('cors');
 
 app.use(cors({
   origin: ['https://user-book-management11-82w5.vercel.app'], // Allow your frontend
