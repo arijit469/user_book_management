@@ -17,7 +17,7 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${apiUrl}/api/users/register`, formData);
+      axios.post('https://user-book-management4.onrender.com/api/users/register', formData);
       toast.success('Registered successfully! Please login.');
       navigate('/login');
     } catch (err) {
