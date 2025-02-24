@@ -6,15 +6,16 @@ const cors = require('cors');
 const app = express();
 
 // Middleware
-const cors = require('cors');
+app.use(express.json());
 app.use(cors({
-  origin: 'https://user-book-management11-82w5-arijitmalik267-gmailcoms-projects.vercel.app'
+  origin: 'https://user-book-management4.onrender.com',
 }));
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
+
 // Routes
 const userRoutes = require('./routes/userRoutes');
 const bookRoutes = require('./routes/bookRoutes');
