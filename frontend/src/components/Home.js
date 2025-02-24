@@ -437,8 +437,6 @@ const Home = () => {
               fontSize: '14px',
               outline: 'none',
               transition: 'border-color 0.3s ease',
-              background: '#fff',
-              boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.05)',
             }}
             onFocus={e => e.currentTarget.style.borderColor = '#2980b9'}
             onBlur={e => e.currentTarget.style.borderColor = '#3498db'}
@@ -494,8 +492,6 @@ const Home = () => {
               minHeight: '80px',
               resize: 'vertical',
               transition: 'border-color 0.3s ease',
-              background: '#fff',
-              boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.05)',
             }}
             onFocus={e => e.currentTarget.style.borderColor = '#2980b9'}
             onBlur={e => e.currentTarget.style.borderColor = '#3498db'}
@@ -752,7 +748,6 @@ const Home = () => {
                   color: '#3498db',
                   cursor: 'pointer',
                   transition: 'background-color 0.3s ease, color 0.3s ease',
-                  textDecoration: 'none',
                 }}
                 activeLinkStyle={{
                   background: 'linear-gradient(45deg, #3498db, #2980b9)',
