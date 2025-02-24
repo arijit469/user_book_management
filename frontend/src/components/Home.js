@@ -24,21 +24,13 @@ const Home = () => {
   const fetchBooks = useCallback(() => {
     setLoading(true);
     axios.get(`${apiUrl}/api/books`)
-      .then(res => {
-        setBooks(res.data);
-        setLoading(false);
-      })
-      .catch(err => {
-        setError(err.message);
-        setLoading(false);
-        console.log('Fetch books error:', err.response ? err.response.data : err.message);
-      });
+      .then(res => { setBooks(res.data); setLoading(false); })
+      .catch(err => { setError(err.message); setLoading(false); console.log('Fetch books error:', err.response ? err.response.data : err.message); });
   }, [apiUrl]);
-
+  
   useEffect(() => {
     fetchBooks();
   }, [fetchBooks]);
-
   if (loading) return <div style={{ textAlign: 'center', padding: '20px', color: '#fff', background: 'linear-gradient(45deg, #4a90e2, #50c878)' }}>Loading books...</div>;
   if (error) return <div style={{ color: 'red', textAlign: 'center', padding: '20px', background: '#ffebee' }}>Error: {error}</div>;
 
