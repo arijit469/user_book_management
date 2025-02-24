@@ -6,10 +6,14 @@ const cors = require('cors');
 const app = express();
 
 // Middleware
-app.use(express.json());
+const cors = require('cors');
+
 app.use(cors({
-  origin:'https://user-book-management4.onrender.com',
+  origin: ['https://user-book-management11-82w5.vercel.app'], // Allow your frontend
+  methods: 'GET,POST,PUT,DELETE',
+  credentials: true
 }));
+
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URI)
